@@ -4,24 +4,32 @@ const client = new kafka.Client("localhost:2181");
  
 const topics = [
     {
-        topic: "webevents.dev"
+        topic: "webevents.dev",
+        offset: 0,
     }
 ];
 const options = {
+    fromOffset: true,
     autoCommit: true,
     fetchMaxWaitMs: 1024,
-    fetchMaxBytes: 256,
+    fetchMaxBytes: 512,
     encoding: "buffer"
 };
  
 const consumer = new kafka.HighLevelConsumer(client, topics, options);
- 
+var lastOffset = 0;
+
 consumer.on("message", function(message) {
-    // console.log("consumer get an message", message.value.length)
+    //console.log("consumer get an message", message, message.offset)
+    // console.log("consumer offset", message.offset)
+    if (message.offset > lastOffset) {
+        lastOffset = message.offset 
+    }
+    // console.log("message.offset > lastOffset ", message.offset, lastOffset, message.offset > lastOffset)
     // Read string into a buffer.
     var buf = new Buffer(message.value, "binary"); 
     var decodedMessage = JSON.parse(buf.toString());
- 
+    
     let json = {
         id: decodedMessage.id,
         type: decodedMessage.type,
@@ -51,7 +59,9 @@ process.on("SIGINT", function() {
 
 function turnOnconsumer() {
     console.log("--------------------------")
+    consumer.topicPayloads[0].offset = lastOffset +1 
+    // console.log("changedpayload", consumer.topicPayloads)
     consumer.resume()
 }
 
-setInterval(turnOnconsumer, 1000)
+setInterval(turnOnconsumer, 2000)
